@@ -277,7 +277,7 @@ if __name__ == '__main__':
     if initial_gen == 0:
         os.environ["JULIA_NUM_THREADS"] = str(args.nb_threads)  # Set the environment variable
         logger.info(f"JULIA_NUM_THREADS is set to {os.environ['JULIA_NUM_THREADS']}")
-        subprocess.run(["julia","search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size)])
+        subprocess.run(["julia", "--project=.", "search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size)])
         tokenize(f"{args.dump_path}/search_output_1.txt", args.n_tokens)
         initial_gen = 1
     
