@@ -422,7 +422,7 @@ if __name__ == '__main__':
         os.environ["JULIA_NUM_THREADS"] = str(args.nb_threads)  # Set the environment variable
         logger.info(f"JULIA_NUM_THREADS is set to {os.environ['JULIA_NUM_THREADS']}")
 
-        subprocess.run(["julia", "search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', args.dump_path + '/transformer-output-decoded.txt'])
+        subprocess.run(["julia", "--project=.", "search_fc.jl", args.dump_path, str(args.nb_local_searches), str(args.num_initial_empty_objects), str(args.final_database_size), str(args.target_db_size), '-i', args.dump_path + '/transformer-output-decoded.txt'])
         if os.path.exists(args.dump_path+"/distribution.txt"):
             with open(args.dump_path+"/distribution.txt", 'r') as file:
                 d_lines = file.readlines()
