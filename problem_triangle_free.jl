@@ -36,7 +36,7 @@ function convert_adjmat_to_string(adjmat::Matrix{Int})::String
     return join(entries)
 end
 
-function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::OBJ_TYPE
+function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     """
     Main greedy search algorithm. 
     It starts and ends with some construction 
@@ -148,7 +148,7 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::OBJ_TYPE
 
 
     end
-    return convert_adjmat_to_string(adjmat)
+    return [convert_adjmat_to_string(adjmat)]
 end
 
 function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
