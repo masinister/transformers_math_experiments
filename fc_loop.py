@@ -26,18 +26,18 @@ def get_parser():
     parser = argparse.ArgumentParser('Generate training sample of low braids via reservoir sampling')
     # JULIA params
     
-    parser.add_argument('--num_initial_empty_objects', type=int, default=500000, help='number of initial rollouts, before the first learning loop')
-    parser.add_argument('--final_database_size', type=int, default=50000, help='training set size')
-    parser.add_argument('--target_db_size', type=int, default=500000, help='size of cache during local search loop, should be larger than training set size')
-    parser.add_argument('--sample-only', type=int, default=500000, help="sample the specified number from the model in each loop")
-    parser.add_argument('--nb_threads', type=int, default=1, help='Number of cpu threads')
+    parser.add_argument('--num_initial_empty_objects', type=int, default=5000, help='number of initial rollouts, before the first learning loop')
+    parser.add_argument('--final_database_size', type=int, default=5000, help='training set size')
+    parser.add_argument('--target_db_size', type=int, default=5000, help='size of cache during local search loop, should be larger than training set size')
+    parser.add_argument('--sample-only', type=int, default=5000, help="sample the specified number from the model in each loop")
+    parser.add_argument('--nb_threads', type=int, default=8, help='Number of cpu threads')
     parser.add_argument('--nb_local_searches', type=int, default=1200, help='This only matters when using multithreading, then it should be a multiple of the number of threads used')
     
 
     # Makemore params
     parser.add_argument('--num-workers', '-n', type=int, default=8, help="number of data workers for both train/test")
-    parser.add_argument('--max-steps', type=int, default=20000, help="max number of optimization steps to run for, or -1 for infinite.")
-    parser.add_argument('--max_epochs', type=int, default= 30000, help='number of epochs')
+    parser.add_argument('--max-steps', type=int, default = 1000, help="max number of optimization steps to run for, or -1 for infinite.")
+    parser.add_argument('--max_epochs', type=int, default = 10, help='number of epochs')
     parser.add_argument('--seed', type=int, default=-1, help="seed")
     # sampling
     parser.add_argument('--top-k', type=int, default=-1, help="top-k for sampling, -1 means no top-k")
