@@ -29,14 +29,14 @@ def get_parser():
     parser.add_argument('--num_initial_empty_objects', type=int, default=5000, help='number of initial rollouts, before the first learning loop')
     parser.add_argument('--final_database_size', type=int, default=5000, help='training set size')
     parser.add_argument('--target_db_size', type=int, default=5000, help='size of cache during local search loop, should be larger than training set size')
-    parser.add_argument('--sample-only', type=int, default=5000, help="sample the specified number from the model in each loop")
+    parser.add_argument('--sample-only', type=int, default=1000, help="sample the specified number from the model in each loop")
     parser.add_argument('--nb_threads', type=int, default=8, help='Number of cpu threads')
     parser.add_argument('--nb_local_searches', type=int, default=1200, help='This only matters when using multithreading, then it should be a multiple of the number of threads used')
     
 
     # Makemore params
     parser.add_argument('--num-workers', '-n', type=int, default=8, help="number of data workers for both train/test")
-    parser.add_argument('--max-steps', type=int, default = 1000, help="max number of optimization steps to run for, or -1 for infinite.")
+    parser.add_argument('--max-steps', type=int, default = 5000, help="max number of optimization steps to run for, or -1 for infinite.")
     parser.add_argument('--max_epochs', type=int, default = 10, help='number of epochs')
     parser.add_argument('--seed', type=int, default=-1, help="seed")
     # sampling
@@ -45,15 +45,15 @@ def get_parser():
     parser.add_argument('--type', type=str, default='transformer', help="model class type to use, bigram|mlp|rnn|gru|bow|transformer")
     parser.add_argument('--n-layer', type=int, default=4, help="number of layers")
     parser.add_argument('--n-head', type=int, default=8, help="number of heads (in a transformer)")
-    parser.add_argument('--n-embd', type=int, default=64, help="number of feature channels in the model")
-    parser.add_argument('--n-embd2', type=int, default=32, help="number of feature channels elsewhere in the model")
+    parser.add_argument('--n-embd', type=int, default=32, help="number of feature channels in the model")
+    parser.add_argument('--n-embd2', type=int, default=16, help="number of feature channels elsewhere in the model")
     # optimization
     parser.add_argument('--batch-size', '-b', type=int, default=32, help="batch size during optimization")
     parser.add_argument('--learning-rate', '-l', type=float, default=5e-4, help="learning rate")
     parser.add_argument('--weight-decay', '-w', type=float, default=0.01, help="weight decay")
     # evaluation against known "good sequences"
     parser.add_argument('--max-output-length', type=int, default=160, help="maximum output length")
-    parser.add_argument('--gen_batch_size', type=int, default=1000, help="generation batch size")
+    parser.add_argument('--gen_batch_size', type=int, default=500, help="generation batch size")
     parser.add_argument('--n_tokens', type=int, default=100, help="nr tokens in tokenizer")
     parser.add_argument('--temperature', type=float, default=1.0, help="temperature")
     
@@ -402,7 +402,7 @@ if __name__ == '__main__':
                 file.write(word)
                 file.write("\n")
         while sample_batch_size < todo:
-            if todo % 50000 ==0 : 
+            if todo % sample_batch_size/10 == 0 : 
                 logger.info(f'{todo} samples remaining')
             n, sm, mx = write_samples(num=sample_batch_size)
             tot_n+=n
