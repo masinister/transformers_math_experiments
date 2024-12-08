@@ -11,7 +11,8 @@ using Dates
 
 # Choose the problem to work on here!
 
-include("problem_pythagorean_triple_free.jl")
+include("problem_iso_free.jl")
+# include("problem_pythagorean_triple_free.jl")
 # include("problem_triangle_free.jl")  
 # include("problem_4_cycle_free.jl")
 # include("problem_permanent_avoid_123.jl")
@@ -61,6 +62,13 @@ function write_output_to_file(db)
     println("Data written to $(filename)")
     println("An example of an object with maximum reward (" * string(rewards[1]) * "):")
     println(db.rewards[rewards[1]][1])
+    
+    # Check if the current problem has a draw function and call it
+    if isdefined(Main, :draw)
+        draw(db.rewards[rewards[1]][1])
+        savefig(find_next_available_filename("candidate", "png"))
+        println("Plot of the candidate object saved.")
+    end
 end
 
 function write_plot_to_file(db)
