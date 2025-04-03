@@ -26,37 +26,20 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     subset = shuffle(subset)
     
     # Start with the full set and iteratively remove points to destroy triangles
-    while true
-        # Identify the first isosceles triangle in the current subset
-        found_triangle = false
-        for i in eachindex(subset)
-            distance_hash = Dict{Int, Vector{Int}}()
-            for j in eachindex(subset)
-                if i != j
-                    dist = manhattan_distance(points[subset[i]], points[subset[j]])
-                    if haskey(distance_hash, dist)
-                        for k in distance_hash[dist]
-                            subset = filter(x -> x != subset[i], subset)
-                            found_triangle = true
-                            break
-                        end
-                        if found_triangle
-                            break
-                        end
-                        push!(distance_hash[dist], subset[j])
-                    else
-                        distance_hash[dist] = [subset[j]]
-                    end
-                end
-            end
-            if found_triangle
+    i = 1
+    while i <= length(subset)
+        distance_hash = Dict{Int, Vector{Int}}()
+        for j in eachindex(subset)
+            dist = manhattan_distance(points[subset[i]], points[subset[j]])
+            if haskey(distance_hash, dist)
+                subset = filter(x -> x != subset[i], subset)
+                i -= 1
                 break
+            else
+                distance_hash[dist] = [subset[j]]
             end
         end
-
-        if !found_triangle
-            break  # No more triangles to resolve
-        end
+        i += 1
     end
 
     # Convert subset to binary string representation

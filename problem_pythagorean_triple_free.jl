@@ -21,8 +21,6 @@ function find_all_pythagorean_triples(max_n::Int)::Vector{Tuple{Int, Int, Int}}
     return triples
 end
 
-using StatsBase
-
 function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     """
     Greedy algorithm to construct the largest subset of [1,...,N] avoiding Pythagorean triples.
