@@ -7,12 +7,6 @@ const N = 6  # Dimension of the hypercube
 const K = 5  # Number of hyperplanes to find
 const max_coeff = 32  # Maximum absolute value for coefficients
 
-# Constants for basis vector representation
-const TOTAL_BASIS_DIM = (N+1) * K
-const BASIS_TOKENS = ["b$(i)$(sign)" for i in 1:TOTAL_BASIS_DIM for sign in ["+", "-"]]
-const RANDOM_TOKENS = ["r$(i)" for i in 1:TOTAL_BASIS_DIM]  # Simplified: reduced number of random tokens
-const ALL_TOKENS = vcat(BASIS_TOKENS, RANDOM_TOKENS)
-
 # A hyperplane is represented as a vector of N+1 integers [a_1, a_2, ..., a_N, b]
 # It corresponds to the equation: a_1*x_1 + a_2*x_2 + ... + a_N*x_N = b
 
@@ -102,136 +96,36 @@ end
 
 function random_hyperplane()::Vector{Int}
     """
-    Generate a random hyperplane using the basis vector approach.
+    Generate a random hyperplane with integer coefficients.
+    Using very small coefficient range to avoid tokenization issues.
     """
-    hyperplane = zeros(Int, N+1)
+    # Coefficients between -max_coeff and max_coeff
+    coeffs = rand(-max_coeff:max_coeff, N)
     
-    # Add random basis vectors
-    num_vectors = rand(3:8)  # Simplified: reasonable range
-    
-    for _ in 1:num_vectors
-        coef_idx = rand(1:N+1)
-        sign = rand([-1, 1])
-        hyperplane[coef_idx] += sign
+    # Avoid generating a zero vector for coefficients
+    while all(c -> c == 0, coeffs)
+        coeffs = rand(-max_coeff:max_coeff, N)
     end
     
-    # Ensure at least one non-zero coefficient for the hyperplane equation
-    if all(iszero, hyperplane[1:N])
-        hyperplane[rand(1:N)] = rand([-1, 1])
-    end
+    # Choose the constant term to make the hyperplane intersect the hypercube
+    # Even smaller range for b to avoid tokenization issues
+    b = rand(0:max_coeff)
     
-    return clamp.(hyperplane, -max_coeff, max_coeff)
-end
-
-# Fix the token_to_basis_index function to accept AbstractString instead of String
-function token_to_basis_index(token::AbstractString)::Tuple{Int, Int, Int}
-    """
-    Convert a token to basis vector information.
-    Returns (hyperplane_index, coefficient_index, value_sign)
-    """
-    if !startswith(token, "b")
-        return (0, 0, 0)
-    end
-    
-    # Find the sign character (last character)
-    sign_char = token[end]
-    if !(sign_char in ['+', '-'])
-        return (0, 0, 0)
-    end
-    
-    # Parse the index
-    basis_idx_str = token[2:end-1]
-    basis_idx = tryparse(Int, basis_idx_str)
-    if basis_idx === nothing || basis_idx < 1 || basis_idx > TOTAL_BASIS_DIM
-        return (0, 0, 0)
-    end
-    
-    sign = sign_char == '+' ? 1 : -1
-    
-    # Map to hyperplane and coefficient indices
-    hp_idx = div(basis_idx - 1, (N+1)) + 1
-    coef_idx = mod(basis_idx - 1, (N+1)) + 1
-    
-    return (hp_idx, coef_idx, sign)
-end
-
-# Alternative fix would be to convert SubString to String in parse_obj_to_hyperplanes:
-function parse_obj_to_hyperplanes(obj::OBJ_TYPE)::Vector{Vector{Int}}
-    """
-    Parse the token-based representation into hyperplanes.
-    """
-    hyperplanes = [zeros(Int, N+1) for _ in 1:K]
-    
-    if isempty(obj)
-        return hyperplanes
-    end
-    
-    # Process each token
-    for token_substr in split(obj)
-        # Convert SubString to String to avoid type issues
-        token = String(token_substr)
-        hp_idx, coef_idx, sign = token_to_basis_index(token)
-        
-        if hp_idx >= 1 && hp_idx <= K && coef_idx >= 1 && coef_idx <= (N+1)
-            hyperplanes[hp_idx][coef_idx] += sign
-        end
-    end
-    
-    # Clamp values to valid range
-    for hp in hyperplanes
-        for i in 1:length(hp)
-            hp[i] = clamp(hp[i], -max_coeff, max_coeff)
-        end
-    end
-    
-    return hyperplanes
-end
-
-function hyperplanes_to_obj(hyperplanes::Vector{Vector{Int}})::OBJ_TYPE
-    """
-    Convert hyperplanes to token-based representation.
-    """
-    tokens = String[]
-    
-    for (hp_idx, hp) in enumerate(hyperplanes)
-        for (coef_idx, value) in enumerate(hp)
-            if value == 0
-                continue
-            end
-            
-            # Create basis vector tokens for this coefficient
-            basis_idx = (hp_idx - 1) * (N+1) + coef_idx
-            sign_char = value > 0 ? "+" : "-"
-            token = "b$(basis_idx)$(sign_char)"
-            
-            # Add tokens for the absolute value
-            append!(tokens, fill(token, abs(value)))
-        end
-    end
-    
-    # Add random tokens if needed for variety
-    if isempty(tokens)
-        push!(tokens, RANDOM_TOKENS[1])
-    elseif length(tokens) < 3
-        # Add a few random tokens for short representations
-        append!(tokens, sample(RANDOM_TOKENS, 3 - length(tokens), replace=false))
-    end
-    
-    # Shuffle the tokens
-    shuffle!(tokens)
-    
-    return join(tokens, " ")
+    return [coeffs..., b]
 end
 
 function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     """
-    Optimized greedy algorithm using token-based representation.
+    Optimized greedy algorithm to find K hyperplanes that cut as many edges as possible.
     """
+    # Parse the input object into a list of hyperplanes
     hyperplanes = parse_obj_to_hyperplanes(obj)
+    
+    # Generate all edges of the hypercube
     edges = generate_hypercube_edges()
     total_edges = length(edges)
     
-    # Ensure we have K hyperplanes
+    # Start with K hyperplanes (add random ones if needed)
     while length(hyperplanes) < K
         push!(hyperplanes, random_hyperplane())
     end
@@ -249,27 +143,26 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     for iteration in 1:max_iterations
         improved = false
         
+        # Try to improve each hyperplane
         for i in 1:K
-            # Find edges that aren't cut by other hyperplanes
+            # Remove current hyperplane to see which edges are still cut by others
             other_hyperplanes = vcat(hyperplanes[1:i-1], hyperplanes[i+1:end])
             cutting_matrix = compute_edge_cutting_matrix(other_hyperplanes, edges)
             already_cut = [any(cutting_matrix[:, e]) for e in 1:length(edges)]
             uncut_edges = findall(.!already_cut)
             
+            # If all edges are already cut by other hyperplanes, skip this one
             if isempty(uncut_edges)
                 continue
             end
             
-            # Try to find a better hyperplane
+            # Find a better hyperplane
             best_cut_count = 0
             best_hyperplane = hyperplanes[i]
             trials = max(100, 200 - iteration * 20)
             
             for _ in 1:trials
-                # Generate candidate using basis vector approach
                 candidate = random_hyperplane()
-                
-                # Count how many previously-uncut edges this candidate cuts
                 cut_count = sum(edge_idx -> hyperplane_cuts_edge(candidate, edges[edge_idx]), uncut_edges)
                 
                 if cut_count > best_cut_count
@@ -282,10 +175,10 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
             hyperplanes[i] = best_hyperplane
         end
         
-        # Re-evaluate
+        # Re-evaluate overall performance
         new_cut_count = count_cut_edges(hyperplanes, edges)
         
-        # Stop if no improvement or all edges cut
+        # Stop if we've cut all edges or if no improvement
         if new_cut_count == total_edges || new_cut_count <= current_cut_count || !improved
             break
         end
@@ -296,10 +189,97 @@ function greedy_search_from_startpoint(db, obj::OBJ_TYPE)::Vector{OBJ_TYPE}
     return [hyperplanes_to_obj(hyperplanes)]
 end
 
+function parse_obj_to_hyperplanes(obj::OBJ_TYPE)::Vector{Vector{Int}}
+    """
+    Parse the string representation into a list of hyperplanes.
+    Format: "a1,a2,...,aN,b;a1,a2,...,aN,b;..."
+    Handle potential errors gracefully.
+    """
+    if isempty(obj)
+        return []
+    end
+    
+    hyperplanes = []
+    for hp_str in split(obj, ";")
+        if isempty(hp_str)
+            continue
+        end
+        
+        # Parse values with error handling
+        try
+            parts = split(hp_str, ",")
+            if length(parts) == N+1
+                coeffs = parse.(Int, parts)
+                push!(hyperplanes, coeffs)
+            end
+        catch e
+            # If parsing fails, skip this hyperplane
+            continue
+        end
+    end
+    
+    # If parsing failed completely, provide a default
+    if isempty(hyperplanes) && !isempty(obj)
+        for _ in 1:K
+            push!(hyperplanes, random_hyperplane())
+        end
+    end
+    
+    return hyperplanes
+end
+
+function format_two_digits(num::Int)::String
+    """
+    Format an integer to have exactly 2 digits with appropriate sign.
+    Add leading zero for single-digit numbers.
+    Add + sign before positive numbers to ensure consistent length.
+    """
+    if num < 0
+        # Negative number
+        if num > -10
+            return "-0$(abs(num))" # e.g., -5 becomes "-05"
+        else
+            return "$(num)" # e.g., -15 remains "-15"
+        end
+    elseif num < 10
+        # Single digit positive or zero
+        return "+0$(num)" # e.g., 5 becomes "+05", 0 becomes "+00"
+    else
+        # Double digit positive
+        return "+$(num)" # e.g., 15 becomes "+15"
+    end
+end
+
+function hyperplanes_to_obj(hyperplanes::Vector{Vector{Int}})::OBJ_TYPE
+    """
+    Convert a list of hyperplanes to string representation.
+    Format: "a1,a2,...,aN,b;a1,a2,...,aN,b;..."
+    Ensure all values are within a safe range for tokenization.
+    Format each number to be exactly 2 digits.
+    """
+    safe_hyperplanes = []
+    for hp in hyperplanes
+        safe_hp = [clamp(val, -max_coeff, max_coeff) for val in hp]
+        push!(safe_hyperplanes, safe_hp)
+    end
+    
+    # Format each number to be exactly 2 digits
+    formatted_hyperplanes = []
+    for hp in safe_hyperplanes
+        formatted_hp = [format_two_digits(val) for val in hp]
+        push!(formatted_hyperplanes, formatted_hp)
+    end
+    
+    # Create string representation
+    hp_strs = [join(hp, ",") for hp in formatted_hyperplanes]
+    return join(hp_strs, ";")
+end
+
 function reward_calc(obj::OBJ_TYPE)::REWARD_TYPE
     """
     Reward is the number of edges cut by the hyperplanes.
     """
+    # No need to strip padding as we're using fixed-width number formatting
     hyperplanes = parse_obj_to_hyperplanes(obj)
     edges = generate_hypercube_edges()
     return count_cut_edges(hyperplanes, edges)
@@ -307,9 +287,8 @@ end
 
 function empty_starting_point()::OBJ_TYPE
     """
-    Start with a minimal representation.
+    Start with K hyperplanes with all zero coefficients.
     """
-    num_tokens = min(2, length(RANDOM_TOKENS))
-    tokens = sample(RANDOM_TOKENS, num_tokens, replace=false)
-    return join(tokens, " ")
+    hyperplanes = [zeros(Int, N+1) for _ in 1:K]
+    return hyperplanes_to_obj(hyperplanes)
 end

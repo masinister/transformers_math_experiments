@@ -162,9 +162,9 @@ function initial_lines()
         println("Using input file")
         open(input_file, "r") do file
             for line in eachline(file)
-                if length(line) == length(empty_starting_point())
-                    push!(lines, line)  # Add each line to the vector
-                end
+                # if length(line) == length(empty_starting_point())
+                push!(lines, line)  # Add each line to the vector
+                # end
             end
         end
     else 

@@ -576,11 +576,11 @@ class CharDataset(Dataset):
         return self.max_word_length + 1 # <START> token followed by words
 
     def encode(self, word):
-        ix = torch.tensor([self.stoi[w] for w in word], dtype=torch.long)
+        ix = torch.tensor([self.stoi.get(w, 0) for w in word], dtype=torch.long)  # Map unknown tokens to 0
         return ix
 
     def decode(self, ix):
-        word = ','.join(self.itos[i] for i in ix)
+        word = ','.join(self.itos.get(i, 'V0') for i in ix)  # Replace unknown tokens with 'V0'
         return word
 
     def __getitem__(self, idx):

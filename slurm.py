@@ -73,33 +73,43 @@ def init_distributed_mode(params):
             value = os.environ.get(name, None)
             print(PREFIX + "%s: %s" % (name, str(value)))
 
-        # # job ID
-        # params.job_id = os.environ['SLURM_JOB_ID']
+        # Check if we're using a single GPU despite multiple CPU tasks
+        gpu_count = torch.cuda.device_count()
+        if gpu_count <= 1 and not params.cpu:
+            print(f"Only {gpu_count} GPU detected, treating as a single GPU job despite multiple tasks")
+            # Force single GPU mode
+            params.n_nodes = 1
+            params.node_id = 0
+            params.local_rank = 0
+            params.global_rank = 0
+            params.world_size = 1
+            params.n_gpu_per_node = 1
+        else:
+            # Original SLURM multi-GPU configuration
+            # number of nodes / node ID
+            params.n_nodes = int(os.environ['SLURM_JOB_NUM_NODES'])
+            params.node_id = int(os.environ['SLURM_NODEID'])
 
-        # number of nodes / node ID
-        params.n_nodes = int(os.environ['SLURM_JOB_NUM_NODES'])
-        params.node_id = int(os.environ['SLURM_NODEID'])
+            # local rank on the current node / global rank
+            params.local_rank = int(os.environ['SLURM_LOCALID'])
+            params.global_rank = int(os.environ['SLURM_PROCID'])
 
-        # local rank on the current node / global rank
-        params.local_rank = int(os.environ['SLURM_LOCALID'])
-        params.global_rank = int(os.environ['SLURM_PROCID'])
+            # number of processes / GPUs per node
+            params.world_size = int(os.environ['SLURM_NTASKS'])
+            params.n_gpu_per_node = params.world_size // params.n_nodes
 
-        # number of processes / GPUs per node
-        params.world_size = int(os.environ['SLURM_NTASKS'])
-        params.n_gpu_per_node = params.world_size // params.n_nodes
+            # define master address and master port
+            hostnames = subprocess.check_output(['scontrol', 'show', 'hostnames', os.environ['SLURM_JOB_NODELIST']])
+            params.master_addr = hostnames.split()[0].decode('utf-8')
+            assert 10001 <= params.master_port <= 20000 or params.world_size == 1
+            print(PREFIX + "Master address: %s" % params.master_addr)
+            print(PREFIX + "Master port   : %i" % params.master_port)
 
-        # define master address and master port
-        hostnames = subprocess.check_output(['scontrol', 'show', 'hostnames', os.environ['SLURM_JOB_NODELIST']])
-        params.master_addr = hostnames.split()[0].decode('utf-8')
-        assert 10001 <= params.master_port <= 20000 or params.world_size == 1
-        print(PREFIX + "Master address: %s" % params.master_addr)
-        print(PREFIX + "Master port   : %i" % params.master_port)
-
-        # set environment variables for 'env://'
-        os.environ['MASTER_ADDR'] = params.master_addr
-        os.environ['MASTER_PORT'] = str(params.master_port)
-        os.environ['WORLD_SIZE'] = str(params.world_size)
-        os.environ['RANK'] = str(params.global_rank)
+            # set environment variables for 'env://'
+            os.environ['MASTER_ADDR'] = params.master_addr
+            os.environ['MASTER_PORT'] = str(params.master_port)
+            os.environ['WORLD_SIZE'] = str(params.world_size)
+            os.environ['RANK'] = str(params.global_rank)
 
     # multi-GPU job (local or multi-node) - jobs started with torch.distributed.launch
     elif params.local_rank != -1:

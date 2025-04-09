@@ -52,10 +52,10 @@ def get_parser():
     parser.add_argument('--learning-rate', '-l', type=float, default=5e-4, help="learning rate")
     parser.add_argument('--weight-decay', '-w', type=float, default=0.01, help="weight decay")
     # evaluation against known "good sequences"
-    parser.add_argument('--max-output-length', type=int, default=100, help="maximum output length")
+    parser.add_argument('--max-output-length', type=int, default=256, help="maximum output length")
     parser.add_argument('--gen_batch_size', type=int, default=500, help="generation batch size")
     parser.add_argument('--n_tokens', type=int, default=100, help="nr tokens in tokenizer")
-    parser.add_argument('--temperature', type=float, default=1.0, help="temperature")
+    parser.add_argument('--temperature', type=float, default=0.6, help="temperature")
     
 
     # path and ports
